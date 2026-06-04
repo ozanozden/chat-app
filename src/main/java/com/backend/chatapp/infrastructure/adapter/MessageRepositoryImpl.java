@@ -14,7 +14,21 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.UUID;
 
-
+/**
+ * Cassandra repository adapter implementing message persistence with denormalization.
+ *
+ * Consistency Configuration (application.yml):
+ * - Read: LOCAL_QUORUM (majority of replicas in local datacenter)
+ * - Write: LOCAL_QUORUM (implicitly set by Spring Data Cassandra)
+ *
+ * This ensures read-your-own-write consistency - when a user sends a message,
+ * they're guaranteed to see it immediately on refresh (2/3 replica overlap).
+ *
+ * Denormalization Strategy:
+ * - Writes to messages_by_conversation (message storage)
+ * - Writes to conversations_by_user for EACH participant (inbox updates)
+ * - Trade-off: Write amplification vs instant conversation list queries
+ */
 @Repository
 @AllArgsConstructor
 public class MessageRepositoryImpl implements MessageRepository {

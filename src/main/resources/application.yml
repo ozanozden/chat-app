@@ -5,6 +5,9 @@ spring:
     port: 9042
     local-datacenter: datacenter1
     schema-action: create-if-not-exists
+    request:
+      consistency: local_quorum
+      serial-consistency: local_serial
 
   data:
     cassandra:

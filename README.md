@@ -306,7 +306,37 @@ curl -X POST http://localhost:8080/api/v1/messages \
 
 **Decision:** Application-layer sorting is worth it to avoid DELETE overhead.
 
-### 4. Cache Strategy
+### 4. Cassandra Consistency Levels
+
+**Current Configuration:** `LOCAL_QUORUM` for both reads and writes
+
+**Why LOCAL_QUORUM?**
+- ✅ Read-your-own-write guarantee (2/3 + 2/3 replica overlap)
+- ✅ Messages appear in chronological order
+- ✅ Single node failure doesn't block operations
+- ❌ Higher latency (~15ms vs ~5ms for ONE)
+
+**Comparison of Consistency Levels:**
+
+| Write | Read | Read-Your-Own-Write? | Latency | Use Case |
+|-------|------|---------------------|---------|----------|
+| ONE | ONE | ❌ No (stale reads) | ~5ms | High throughput, stale data OK |
+| QUORUM | QUORUM | ✅ Yes | ~15ms | **Chat apps** (balance of consistency & performance) |
+| ALL | ALL | ✅ Yes | ~50ms | Financial transactions (max consistency) |
+
+**Development Setup Note:**
+- Single Cassandra node (RF=1) means strong consistency by default
+- Consistency levels matter in production with RF=3+ multi-node clusters
+
+**Production Recommendation:**
+```yaml
+spring.cassandra.request.consistency: local_quorum
+spring.cassandra.request.serial-consistency: local_serial
+```
+
+With RF=3, this ensures majority agreement before responding.
+
+### 5. Cache Strategy
 
 **Redis Hash vs Separate Keys:**
 - Considered: `user:names` hash with all names
