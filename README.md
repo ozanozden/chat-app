@@ -219,67 +219,114 @@ Redis Keys:
 - **Lombok** - Reduce boilerplate
 - **Jackson** - JSON serialization with Java 8 time support
 
-## 🏃 Running the Project
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Java 21
-- Docker & Docker Compose
-- Gradle
+- **Docker & Docker Compose** - For running Cassandra, PostgreSQL, and Redis
+- **Java 21** - Language runtime
+- **Gradle** - Build tool (or use included `./gradlew`)
 
-### Setup
+### 1. Start Infrastructure
 
-1. **Start infrastructure:**
 ```bash
 docker-compose up -d
 ```
 
 This starts:
-- Cassandra (port 9042)
-- PostgreSQL (port 5432)
-- Redis (port 6379)
+- **Cassandra** on `localhost:9042`
+- **PostgreSQL** on `localhost:5432` (db: `chatapp`, user: `chatuser`, password: `chatpass`)
+- **Redis** on `localhost:6379`
 
-2. **Create Cassandra keyspace:**
+**Wait 30-60 seconds** for Cassandra to fully initialize before proceeding.
+
+### 2. Create Cassandra Keyspace & Tables
+
+Run the schema file to create the keyspace and tables:
+
 ```bash
-docker exec -it $(docker ps -qf "ancestor=cassandra:4.1") cqlsh
-
-CREATE KEYSPACE IF NOT EXISTS chat_app 
-WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+docker exec -i $(docker ps -qf "ancestor=cassandra:4.1") cqlsh < schema.cql
 ```
 
-3. **Run the application:**
+**If that doesn't work** (container name different), find your container name first:
+
+```bash
+docker ps | grep cassandra
+# Then use the container name:
+docker exec -i <container-name> cqlsh < schema.cql
+```
+
+**Verify the schema was created:**
+
+```bash
+docker exec -it $(docker ps -qf "ancestor=cassandra:4.1") cqlsh
+```
+
+Then in the CQL shell:
+
+```cql
+USE chat_app;
+DESCRIBE TABLES;
+-- Should show: conversations_by_user, messages_by_conversation, users
+```
+
+### 3. Start the Application
+
 ```bash
 ./gradlew bootRun
 ```
 
+**PostgreSQL tables are auto-created** by JPA (`spring.jpa.hibernate.ddl-auto: update` in `application.yml`)
+
 Application starts on `http://localhost:8080`
 
-### API Endpoints
+### 4. Test the API
 
-**Users:**
-```
-POST   /api/v1/users                     # Create user
-GET    /api/v1/users                     # Get all users
-```
-
-**Messages:**
-```
-POST   /api/v1/messages                  # Send message
-GET    /api/v1/users/{userId}/conversations          # Get user's conversations
-GET    /api/v1/conversations/{id}/messages           # Get conversation messages
-```
-
-### Example: Send Message
+**Create a user:**
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/messages \
+curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
   -d '{
-    "conversationId": "00000000-0000-0000-0000-000000000001",
-    "senderId": "user-alice-uuid",
-    "text": "Hey Bob!",
-    "participantUserIds": ["user-alice-uuid", "user-bob-uuid"]
+    "name": "Alice",
+    "email": "alice@example.com"
   }'
+```
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Alice",
+  "email": "alice@example.com"
+}
+```
+
+**Send a message:**
+
+```bash
+curl -X POST http://localhost:8080/api/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversationId": "123e4567-e89b-12d3-a456-426614174000",
+    "senderId": "550e8400-e29b-41d4-a716-446655440000",
+    "messageText": "Hello Cassandra!",
+    "participantUserIds": ["550e8400-e29b-41d4-a716-446655440000"]
+  }'
+```
+
+**Get user's conversations:**
+
+```bash
+curl http://localhost:8080/api/users/550e8400-e29b-41d4-a716-446655440000/conversations
+```
+
+### 5. Stop Everything
+
+```bash
+docker-compose down
+# To remove volumes as well (deletes all data):
+docker-compose down -v
 ```
 
 ## 📚 Key Learnings & Trade-offs
