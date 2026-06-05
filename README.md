@@ -565,13 +565,13 @@ The project demonstrates:
 ### When I Would Actually Use Cassandra
 
 **✅ Good fit:**
+- **Chat applications at scale** - Discord (120M+ messages/day), Facebook Messenger - horizontal write scaling + predictable <5ms latency
 - **IoT sensor data** - 1M devices × 1 reading/sec = 1M writes/sec (PostgreSQL can't handle this)
 - **Logging/metrics** - Microservices writing 100K logs/sec across services
 - **Time-series data** - Stock prices, weather data, click streams (ordered by time, append-only)
 - **Activity feeds** - Social media posts, notifications (partition by user_id, sort by time)
 
 **❌ Bad fit:**
-- **Chat applications** - Need strong consistency for message ordering (this project proves it's possible but suboptimal)
 - **E-commerce transactions** - Need ACID guarantees for inventory/payments
 - **Ad-hoc analytics** - Can't do `WHERE text LIKE '%search%'` without scanning everything
 - **Small scale** - PostgreSQL handles 10K writes/sec on single node (Cassandra overhead not worth it)
